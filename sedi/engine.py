@@ -6,7 +6,7 @@ from threading import Thread
 import requests
 from tqdm import tqdm
 
-from . import config
+from .config import BAIDU_URL, USER_AGENT
 
 
 class Baidu:
@@ -17,18 +17,19 @@ class Baidu:
         if not os.path.exists(save_path):
             os.mkdir(save_path)
 
-        self.url = config.BAIDU_URL
-        self.headers = {'User-Agent': config.USER_AGENT}
+        self.url = BAIDU_URL
+        self.headers = {'User-Agent': USER_AGENT}
 
         self.img_list = []
         self.total = 2000
         self.offset = 0
         self.p_bar = tqdm(desc='searching', total=self.total)
+        self.session = requests.Session()
 
     def request_image_list(self):
         while True:
             url = self.url.format(self.keyword, self.keyword, self.offset)
-            response = requests.get(url, headers=self.headers, timeout=5)
+            response = self.session.get(url, headers=self.headers, timeout=5)
 
             img_names = re.findall('"fromPageTitleEnc":"(.*?)"', response.text)
             img_urls = re.findall('"thumbURL":"(.*?)"', response.text)
@@ -49,7 +50,7 @@ class Baidu:
 
     def download_image(self, url, filepath):
         try:
-            response = requests.get(url, headers=self.headers, timeout=3)
+            response = self.session.get(url, headers=self.headers, timeout=3)
 
             with open(filepath, 'wb') as fp:
                 fp.write(response.content)

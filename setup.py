@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="sedi",
-    version="0.1.0",
+    version="0.1.1",
     author="baijiazai",
     author_email="1052065965@qq.com",
     description="Search engines download images",
