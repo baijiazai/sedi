@@ -1,54 +1,60 @@
 import os
 import re
 import multiprocessing
+from json import loads
 from threading import Thread
+from abc import abstractmethod
+from typing import List, Tuple
 
 import requests
+from requests import Response
 from tqdm import tqdm
 
-from .config import BAIDU_URL, USER_AGENT
+from sedi.config import USER_AGENT, BAIDU_URL, SOGOU_URL, T360_URL
 
 
-class Baidu:
-    def __init__(self, keyword, save_path):
+class SearchEngine:
+    def __init__(self, keyword: str, save_path: str):
         self.keyword = keyword
         self.save_path = save_path
         # Create a directory
         if not os.path.exists(save_path):
             os.mkdir(save_path)
 
-        self.url = BAIDU_URL
+        self.url = ''
+        self.name = ''
         self.headers = {'User-Agent': USER_AGENT}
 
         self.img_list = []
-        self.total = 2000
+        self.total = 0
+        self.current = 0
         self.offset = 0
-        self.p_bar = tqdm(desc='searching', total=self.total)
+        self.p_bar = tqdm(desc='Searching')
         self.session = requests.Session()
+
+    @abstractmethod
+    def extract_image_list(self, response: Response) -> List[Tuple[str, str]]:
+        pass
 
     def request_image_list(self):
         while True:
-            url = self.url.format(self.keyword, self.keyword, self.offset)
+            url = self.url.format(keyword=self.keyword, current=self.current, offset=self.offset)
             response = self.session.get(url, headers=self.headers, timeout=5)
 
-            img_names = re.findall('"fromPageTitleEnc":"(.*?)"', response.text)
-            img_urls = re.findall('"thumbURL":"(.*?)"', response.text)
+            data = self.extract_image_list(response)
 
-            if not img_urls:
+            if not data:
                 break
 
-            # data = response.json()['data'][:-1]
-            data = zip(img_names, img_urls)
             self.img_list.extend(data)
 
-            self.offset += 30
-            self.p_bar.update(30)
+            self.current += self.offset
+            self.p_bar.update(len(data))
 
-        self.p_bar.update(self.total - self.p_bar.n)
         self.p_bar.close()
         self.total = len(self.img_list)
 
-    def download_image(self, url, filepath):
+    def download_image(self, url: str, filepath: str):
         try:
             response = self.session.get(url, headers=self.headers, timeout=3)
 
@@ -72,7 +78,7 @@ class Baidu:
             self.p_bar.update(1)
 
     def multithreading_download(self):
-        self.p_bar = tqdm(desc='downloading', total=self.total)
+        self.p_bar = tqdm(desc=f'[{self.name}] Downloading', total=self.total)
 
         threads = []
         for _ in range(multiprocessing.cpu_count()):
@@ -86,3 +92,41 @@ class Baidu:
     def begin(self):
         self.request_image_list()
         self.multithreading_download()
+
+
+class Baidu(SearchEngine):
+    def __init__(self, keyword: str, save_path: str):
+        super().__init__(keyword, save_path)
+        self.url = BAIDU_URL
+        self.name = 'baidu'
+        self.offset = 60
+
+    def extract_image_list(self, response: Response) -> List[Tuple[str, str]]:
+        img_names = re.findall('"fromPageTitleEnc":"(.*?)"', response.text)
+        img_urls = re.findall('"thumbURL":"(.*?)"', response.text)
+
+        return list(zip(img_names, img_urls))
+
+
+class Sogou(SearchEngine):
+    def __init__(self, keyword: str, save_path: str):
+        super().__init__(keyword, save_path)
+        self.url = SOGOU_URL
+        self.name = 'sogou'
+        self.offset = 100
+
+    def extract_image_list(self, response: Response) -> List[Tuple[str, str]]:
+        data = loads(response.text)['data']
+        return [(item['title'], item['picUrl']) for item in data['items']] if data else []
+
+
+class T360(SearchEngine):
+    def __init__(self, keyword: str, save_path: str):
+        super().__init__(keyword, save_path)
+        self.url = T360_URL
+        self.name = '360'
+        self.offset = 100
+
+    def extract_image_list(self, response: Response) -> List[Tuple[str, str]]:
+        data = loads(response.text)['list']
+        return [(item['title'], item['thumb']) for item in data]

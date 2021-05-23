@@ -1,3 +1,3 @@
-from .engine import Baidu
+from sedi.engine import Baidu, Sogou, T360
 
-__all__ = ['Baidu']
+__all__ = ['Baidu', 'Sogou', 'T360']

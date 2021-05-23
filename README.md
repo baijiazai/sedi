@@ -1,4 +1,5 @@
 # sedi
+
 Search engines download images
 
 Compatibility
@@ -16,17 +17,30 @@ pip install sedi
 ```
 
 Usage:
+
 ```bash
 # Help
-> sedi
+> sedi --help
 
-Usage: sedi <keyword> <save_path>
+Usage: sedi [OPTIONS] KEYWORD
+
+Options:
+  -s, --save_path TEXT  Picture save path (relative path or absolute path)
+                        [./img].
+  -e, --engine TEXT     Search engine ([baidu], sogou, 360).
+  --help                Show this message and exit.
 
 # Example
 > sedi cat img
 
-searching: 100%|██████████████████████████████████████████████████████████████████| 2000/2000 [00:12<00:00, 164.47it/s]
-downloading: 100%|█████████████████████████████████████████████████████████████████| 1573/1573 [01:19<00:00, 19.88it/s]
+Searching: 1594it [00:08, 177.96it/s]
+[baidu] Downloading: 100%|██████████████████████████████| 1594/1594 [00:22<00:00, 71.08it/s]
+
+# Switch engine
+> sedi cat -e sogou
+
+# Change save path
+> sedi cat -s ./baidu
 ```
 
 License
